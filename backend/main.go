@@ -11,68 +11,71 @@ import (
 )
 
 func main() {
-	// Load .env (optional in production)
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
-	}
+	// Load env (Render ignores .env, uses dashboard vars)
+	_ = godotenv.Load()
 
-	// Init MongoDB
+	// Init DB
 	InitDB()
 
 	r := mux.NewRouter()
 
-	// CORS middleware
+	// -----------------------
+	// CORS (Render-safe)
+	// -----------------------
 	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			origin := os.Getenv("CORS_ORIGIN")
 			if origin == "" {
-				origin = "http://localhost:3000"
+				origin = "*"
 			}
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-			if r.Method == http.MethodOptions {
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+			if req.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, req)
 		})
 	})
 
-	// API routes
-	RegisterAuthRoutes(r)
-	RegisterProfileRoutes(r)
-	RegisterPaymentRoutes(r)
-	RegisterJobRoutes(r)
+	// -----------------------
+	// API ROUTES (IMPORTANT: before frontend)
+	// -----------------------
+	api := r.PathPrefix("/api").Subrouter()
+	RegisterAuthRoutes(api)
+	RegisterProfileRoutes(api)
+	RegisterPaymentRoutes(api)
+	RegisterJobRoutes(api)
 
-	// ===============================
-	// Serve React frontend (SPA)
-	// ===============================
+	// -----------------------
+	// Serve React build
+	// -----------------------
 	buildPath := "./public"
 	indexFile := filepath.Join(buildPath, "index.html")
 
-	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		filePath := filepath.Join(buildPath, r.URL.Path)
+	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		filePath := filepath.Join(buildPath, req.URL.Path)
 
-		// If file exists, serve it
 		if _, err := os.Stat(filePath); err == nil {
-			http.ServeFile(w, r, filePath)
+			http.ServeFile(w, req, filePath)
 			return
 		}
-
-		// Otherwise serve React index.html
-		http.ServeFile(w, r, indexFile)
+		http.ServeFile(w, req, indexFile)
 	})
 
-	// Start server
+	// -----------------------
+	// PORT (Render FIX)
+	// -----------------------
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Println("Server running on port", port)
-	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, r))
+	addr := "0.0.0.0:" + port
+	log.Println("Server running on", addr)
 
+	log.Fatal(http.ListenAndServe(addr, r))
 }
