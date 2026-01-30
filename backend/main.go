@@ -19,18 +19,17 @@ func main() {
 	r := mux.NewRouter()
 
 	// -----------------------
-	// CORS Middleware (PROD SAFE)
+	// CORS (safe for demo)
 	// -----------------------
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 
 			origin := os.Getenv("CORS_ORIGIN")
 			if origin == "" {
-				origin = "*" // safe for demo/interview
+				origin = "*"
 			}
 
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
@@ -44,7 +43,7 @@ func main() {
 	})
 
 	// -----------------------
-	// API ROUTES (IMPORTANT)
+	// API ROUTES
 	// -----------------------
 	api := r.PathPrefix("/api").Subrouter()
 	RegisterAuthRoutes(api)
@@ -53,7 +52,7 @@ func main() {
 	RegisterJobRoutes(api)
 
 	// -----------------------
-	// Serve React Frontend
+	// Serve React frontend
 	// -----------------------
 	buildPath := "./public"
 	indexFile := filepath.Join(buildPath, "index.html")
@@ -61,7 +60,7 @@ func main() {
 	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		filePath := filepath.Join(buildPath, req.URL.Path)
 
-		if stat, err := os.Stat(filePath); err == nil && !stat.IsDir() {
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
 			http.ServeFile(w, req, filePath)
 			return
 		}
@@ -70,14 +69,15 @@ func main() {
 	})
 
 	// -----------------------
-	// PORT (DEPLOYMENT FIX)
+	// PORT (THIS IS THE FIX)
 	// -----------------------
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		log.Fatal("PORT is not set")
 	}
 
 	addr := "0.0.0.0:" + port
-	log.Println("🚀 Server running on", addr)
+	log.Println("🚀 Server listening on", addr)
+
 	log.Fatal(http.ListenAndServe(addr, r))
 }
