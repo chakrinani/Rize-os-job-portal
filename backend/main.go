@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// Load env (Render ignores .env, uses dashboard vars)
+	// Load env (Render uses dashboard vars, .env is optional)
 	_ = godotenv.Load()
 
 	// Init DB
@@ -42,7 +42,7 @@ func main() {
 	})
 
 	// -----------------------
-	// API ROUTES (IMPORTANT: before frontend)
+	// API ROUTES (prefix /api)
 	// -----------------------
 	api := r.PathPrefix("/api").Subrouter()
 	RegisterAuthRoutes(api)
@@ -67,7 +67,7 @@ func main() {
 	})
 
 	// -----------------------
-	// PORT (Render FIX)
+	// PORT (Render REQUIRED)
 	// -----------------------
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -76,6 +76,5 @@ func main() {
 
 	addr := "0.0.0.0:" + port
 	log.Println("Server running on", addr)
-
 	log.Fatal(http.ListenAndServe(addr, r))
 }
