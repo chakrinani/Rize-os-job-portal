@@ -7,29 +7,30 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load env (Render uses dashboard vars, .env is optional)
-	_ = godotenv.Load()
-
+	// -----------------------
 	// Init DB
+	// -----------------------
 	InitDB()
 
+	// Router
 	r := mux.NewRouter()
 
 	// -----------------------
-	// CORS (Render-safe)
+	// CORS Middleware (PROD SAFE)
 	// -----------------------
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
 			origin := os.Getenv("CORS_ORIGIN")
 			if origin == "" {
-				origin = "*"
+				origin = "*" // safe for demo/interview
 			}
 
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
@@ -37,12 +38,13 @@ func main() {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
+
 			next.ServeHTTP(w, req)
 		})
 	})
 
 	// -----------------------
-	// API ROUTES (prefix /api)
+	// API ROUTES (IMPORTANT)
 	// -----------------------
 	api := r.PathPrefix("/api").Subrouter()
 	RegisterAuthRoutes(api)
@@ -51,7 +53,7 @@ func main() {
 	RegisterJobRoutes(api)
 
 	// -----------------------
-	// Serve React build
+	// Serve React Frontend
 	// -----------------------
 	buildPath := "./public"
 	indexFile := filepath.Join(buildPath, "index.html")
@@ -59,15 +61,16 @@ func main() {
 	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		filePath := filepath.Join(buildPath, req.URL.Path)
 
-		if _, err := os.Stat(filePath); err == nil {
+		if stat, err := os.Stat(filePath); err == nil && !stat.IsDir() {
 			http.ServeFile(w, req, filePath)
 			return
 		}
+
 		http.ServeFile(w, req, indexFile)
 	})
 
 	// -----------------------
-	// PORT (Render REQUIRED)
+	// PORT (DEPLOYMENT FIX)
 	// -----------------------
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -75,6 +78,6 @@ func main() {
 	}
 
 	addr := "0.0.0.0:" + port
-	log.Println("Server running on", addr)
+	log.Println("🚀 Server running on", addr)
 	log.Fatal(http.ListenAndServe(addr, r))
 }
