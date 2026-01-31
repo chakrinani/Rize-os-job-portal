@@ -102,7 +102,19 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 	job.ID = res.InsertedID.(primitive.ObjectID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(job)
+	
+	// Return the complete job with all fields including the ID
+	response := map[string]interface{}{
+		"id":          job.ID.Hex(),
+		"_id":         job.ID.Hex(),
+		"title":       job.Title,
+		"description": job.Description,
+		"salary":      job.Salary,
+		"skills":      job.Skills,
+		"postedBy":    job.PostedBy,
+		"createdAt":   job.CreatedAt,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func GetJobs(w http.ResponseWriter, r *http.Request) {
@@ -132,8 +144,23 @@ func GetJobs(w http.ResponseWriter, r *http.Request) {
 		jobList = []Job{}
 	}
 
+	// Format jobs with hex string IDs for JSON response
+	var response []map[string]interface{}
+	for _, job := range jobList {
+		response = append(response, map[string]interface{}{
+			"id":          job.ID.Hex(),
+			"_id":         job.ID.Hex(),
+			"title":       job.Title,
+			"description": job.Description,
+			"salary":      job.Salary,
+			"skills":      job.Skills,
+			"postedBy":    job.PostedBy,
+			"createdAt":   job.CreatedAt,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(jobList)
+	json.NewEncoder(w).Encode(response)
 }
 
 func RegisterJobRoutes(r *mux.Router) {

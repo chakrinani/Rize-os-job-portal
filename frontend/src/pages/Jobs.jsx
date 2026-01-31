@@ -59,7 +59,13 @@ export default function Jobs() {
           : [],
       });
 
-      setJobs((prev) => [newJob, ...prev]);
+      // Ensure the job has an id field for React keys
+      const jobWithId = {
+        ...newJob,
+        id: newJob.id || newJob._id,
+      };
+
+      setJobs((prev) => [jobWithId, ...prev]);
       setPostTitle('');
       setPostDesc('');
       setPostSalary('');
